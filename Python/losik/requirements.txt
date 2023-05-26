@@ -1,0 +1,4 @@
+tk==0.1.0
+tkcalendar==1.6.1
+fpdf==1.7.2
+pandas==2.0.1
