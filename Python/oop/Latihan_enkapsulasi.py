@@ -24,11 +24,11 @@ class Hero:
 		return "{} level {}: \n\thealth = {}/{} \n\tattack = {} \n\tarmor = {}".format(self.__name,self.__level,self.__health,self.__healthMax,self.__attPower,self.__armor)
 
 	@property
-	def gainExp(self):
+	def gainExp(self): # getter
 		pass
 
 	@gainExp.setter
-	def gainExp(self,addExp):
+	def gainExp(self,addExp): 
 		self.__exp += addExp
 		if (self.__exp >= 100):
 			print(self.__name, 'level up')
