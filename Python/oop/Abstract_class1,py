@@ -1,0 +1,30 @@
+# membuat class abstract
+# abc = abstract base class
+from abc import ABC,abstractmethod
+
+class Button(ABC):
+
+	@abstractmethod
+	def click(self):
+		pass
+	
+class PushButton(Button):
+	
+    # harus ada method click, jika tidak ada maka akan error
+	def click(self):
+		print("push button click")
+
+class RadioButton(Button):
+
+    # harus ada method click
+	def click(self):
+		print("radio button click")
+	
+
+tombol1 = PushButton()
+tombol2 = RadioButton()
+
+tombol1.click()
+tombol2.click()
+
+help(tombol1)
