@@ -32,7 +32,7 @@ with open('review.csv', 'w', newline='', encoding='utf-8') as file:
         writer.writerow([review['content'], review['score']])
 print("Scraping selesai. Data tersimpan dalam file 'review.csv'")
 
-scrapreview
+# scrapreview
 
 import pandas as pd
 
@@ -172,87 +172,119 @@ clean_df['text_akhir'] = clean_df['text_stopword'].apply(toSentence)
 df = clean_df.head(10000)
 df
 
-import csv
-import requests
-from io import StringIO
+from textblob import TextBlob
 
-# Membaca data kamus kata-kata positif dari GitHub
-lexicon_positive = dict()
-
-response = requests.get('https://raw.githubusercontent.com/angelmetanosaa/dataset/main/lexicon_positive.csv')
-# Mengirim permintaan HTTP untuk mendapatkan file CSV dari GitHub
-
-if response.status_code == 200:
-    # Jika permintaan berhasil
-    reader = csv.reader(StringIO(response.text), delimiter=',')
-    # Membaca teks respons sebagai file CSV menggunakan pembaca CSV dengan pemisah koma
-
-    for row in reader:
-        # Mengulangi setiap baris dalam file CSV
-        lexicon_positive[row[0]] = int(row[1])
-        # Menambahkan kata-kata positif dan skornya ke dalam kamus lexicon_positive
-else:
-    print("Failed to fetch positive lexicon data")
-
-# Membaca data kamus kata-kata negatif dari GitHub
-lexicon_negative = dict()
-
-response = requests.get('https://raw.githubusercontent.com/angelmetanosaa/dataset/main/lexicon_negative.csv')
-# Mengirim permintaan HTTP untuk mendapatkan file CSV dari GitHub
-
-if response.status_code == 200:
-    # Jika permintaan berhasil
-    reader = csv.reader(StringIO(response.text), delimiter=',')
-    # Membaca teks respons sebagai file CSV menggunakan pembaca CSV dengan pemisah koma
-
-    for row in reader:
-        # Mengulangi setiap baris dalam file CSV
-        lexicon_negative[row[0]] = int(row[1])
-        # Menambahkan kata-kata negatif dan skornya dalam kamus lexicon_negative
-else:
-    print("Failed to fetch negative lexicon data")
-
-# Fungsi untuk menentukan polaritas sentimen dari tweet
-
-def sentiment_analysis_lexicon_indonesia(text):
-    #for word in text:
-
-    score = 0
-    # Inisialisasi skor sentimen ke 0
-
-    for word in text:
-        # Mengulangi setiap kata dalam teks
-
-        if (word in lexicon_positive):
-            score = score + lexicon_positive[word]
-            # Jika kata ada dalam kamus positif, tambahkan skornya ke skor sentimen
-
-    for word in text:
-        # Mengulangi setiap kata dalam teks (sekali lagi)
-
-        if (word in lexicon_negative):
-            score = score + lexicon_negative[word]
-            # Jika kata ada dalam kamus negatif, kurangkan skornya dari skor sentimen
-
-    polarity=''
-    # Inisialisasi variabel polaritas
-
-    # buat polarity neutral, positive, negative
-    if score > 1:
-        polarity = 'positive'
-    elif score < -1:
-        polarity = 'negative'
+def analisis_sentimen(text):
+    analysis = TextBlob(text)
+    if analysis.sentiment.polarity > 0:
+        return 'positive'
+    elif analysis.sentiment.polarity == 0:
+        return 'neutral'
     else:
-        polarity = 'neutral'
+        return 'negative'
 
-    return score, polarity
-    # Mengembalikan skor sentimen dan polaritas teks
+df['polarity'] = df['text_akhir'].apply(analisis_sentimen)
+df
 
-results = df['text_stopword'].apply(sentiment_analysis_lexicon_indonesia)
-results = list(zip(*results))
-df['polarity_score'] = results[0]
-df['polarity'] = results[1]
-print(df['polarity'].value_counts())
+nltk.download('vader_lexicon')
+
+# Menggunakan VADER
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
+
+def analisis_sentimen_vader(text):
+    analyzer = SentimentIntensityAnalyzer()
+    analysis = analyzer.polarity_scores(text)
+    if analysis['compound'] > 0:
+        return 'positive'
+    elif analysis['compound'] == 0:
+        return 'neutral'
+    else:
+        return 'negative'
+
+df['polarity_vader'] = df['text_akhir'].apply(analisis_sentimen_vader)
+df
+
+# import csv
+# import requests
+# from io import StringIO
+
+# # Membaca data kamus kata-kata positif dari GitHub
+# lexicon_positive = dict()
+
+# response = requests.get('https://raw.githubusercontent.com/angelmetanosaa/dataset/main/lexicon_positive.csv')
+# # Mengirim permintaan HTTP untuk mendapatkan file CSV dari GitHub
+
+# if response.status_code == 200:
+#     # Jika permintaan berhasil
+#     reader = csv.reader(StringIO(response.text), delimiter=',')
+#     # Membaca teks respons sebagai file CSV menggunakan pembaca CSV dengan pemisah koma
+
+#     for row in reader:
+#         # Mengulangi setiap baris dalam file CSV
+#         lexicon_positive[row[0]] = int(row[1])
+#         # Menambahkan kata-kata positif dan skornya ke dalam kamus lexicon_positive
+# else:
+#     print("Failed to fetch positive lexicon data")
+
+# # Membaca data kamus kata-kata negatif dari GitHub
+# lexicon_negative = dict()
+
+# response = requests.get('https://raw.githubusercontent.com/angelmetanosaa/dataset/main/lexicon_negative.csv')
+# # Mengirim permintaan HTTP untuk mendapatkan file CSV dari GitHub
+
+# if response.status_code == 200:
+#     # Jika permintaan berhasil
+#     reader = csv.reader(StringIO(response.text), delimiter=',')
+#     # Membaca teks respons sebagai file CSV menggunakan pembaca CSV dengan pemisah koma
+
+#     for row in reader:
+#         # Mengulangi setiap baris dalam file CSV
+#         lexicon_negative[row[0]] = int(row[1])
+#         # Menambahkan kata-kata negatif dan skornya dalam kamus lexicon_negative
+# else:
+#     print("Failed to fetch negative lexicon data")
+
+# # Fungsi untuk menentukan polaritas sentimen dari tweet
+
+# def sentiment_analysis_lexicon_indonesia(text):
+#     #for word in text:
+
+#     score = 0
+#     # Inisialisasi skor sentimen ke 0
+
+#     for word in text:
+#         # Mengulangi setiap kata dalam teks
+
+#         if (word in lexicon_positive):
+#             score = score + lexicon_positive[word]
+#             # Jika kata ada dalam kamus positif, tambahkan skornya ke skor sentimen
+
+#     for word in text:
+#         # Mengulangi setiap kata dalam teks (sekali lagi)
+
+#         if (word in lexicon_negative):
+#             score = score + lexicon_negative[word]
+#             # Jika kata ada dalam kamus negatif, kurangkan skornya dari skor sentimen
+
+#     polarity=''
+#     # Inisialisasi variabel polaritas
+
+#     # buat polarity neutral, positive, negative
+#     if score > 1:
+#         polarity = 'positive'
+#     elif score < -1:
+#         polarity = 'negative'
+#     else:
+#         polarity = 'neutral'
+
+#     return score, polarity
+#     # Mengembalikan skor sentimen dan polaritas teks
+
+# results = df['text_stopword'].apply(sentiment_analysis_lexicon_indonesia)
+# results = list(zip(*results))
+# df['polarity_score'] = results[0]
+# df['polarity'] = results[1]
+# print(df['polarity'].value_counts())
 
 df
 
@@ -262,7 +294,9 @@ from sklearn.preprocessing import LabelEncoder
 
 # Pisahkan data menjadi fitur (tweet) dan label (sentimen)
 X = df['text_akhir']
-y = df['polarity']
+# y = df['polarity']
+y = df['polarity_vader']
+
 
 # Encode label
 label_encoder = LabelEncoder()
@@ -413,3 +447,4 @@ history = model.fit(X_train, y_train, epochs=10, validation_data=(X_test, y_test
 # Evaluasi model
 loss, accuracy = model.evaluate(X_test, y_test)
 print('Accuracy:', accuracy)
+
