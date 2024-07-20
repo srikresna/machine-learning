@@ -297,7 +297,6 @@ X = df['text_akhir']
 # y = df['polarity']
 y = df['polarity_vader']
 
-
 # Encode label
 label_encoder = LabelEncoder()
 y = label_encoder.fit_transform(y)
@@ -309,17 +308,87 @@ X_tfidf = tfidf.fit_transform(X)
 # Konversi hasil ekstraksi fitur menjadi dataframe
 features_df = pd.DataFrame(X_tfidf.toarray(), columns=tfidf.get_feature_names_out())
 
+# Ektraksi fitur dengan BoW
+from sklearn.feature_extraction.text import CountVectorizer
+
+# Membuat objek CountVectorizer
+bow = CountVectorizer(max_features=200, min_df=17, max_df=0.8)
+X_bow = bow.fit_transform(X)
+
+# Konversi hasil ekstraksi fitur menjadi dataframe
+features_df = pd.DataFrame(X_bow.toarray(), columns=bow.get_feature_names_out())
+
+# Ekstraksi fitur dengan metode GloVe
+import gensim.downloader as api
+
+# Mengunduh model GloVe
+glove_model = api.load('glove-twitter-25')
+
+# Membuat vektor fitur GloVe
+X_glove = np.array([np.mean([glove_model[word] for word in document.split() if word in glove_model] or [np.zeros(25)], axis=0) for document in X])
+
+# Konversi hasil ekstraksi fitur menjadi dataframe
+features_df = pd.DataFrame(X_glove)
+
+# Ektrasi fitur dengan metode Word2Vec
+from gensim.models import Word2Vec
+
+# Tokenisasi teks
+tokenized_text = [word_tokenize(text) for text in df['text_akhir']]
+# Membuat model Word2Vec
+word2vec = Word2Vec(tokenized_text, vector_size=100, window=5, min_count=1, sg=1)
+
+# Membuat vektor fitur Word2Vec
+X_word2vec = np.array([np.mean([word2vec.wv[word] for word in document if word in word2vec.wv] or [np.zeros(100)], axis=0) for document in tokenized_text])
+
+# Konversi hasil ekstraksi fitur menjadi dataframe
+features_df = pd.DataFrame(X_word2vec)
+
+# Ekstraksi fitur dengan metode FastText
+from gensim.models import FastText
+
+# Membuat model FastText
+fasttext = FastText(sentences=tokenized_text, vector_size=100, window=5, min_count=1, sg=1)
+
+# Membuat vektor fitur FastText
+X_fasttext = np.array([np.mean([fasttext.wv[word] for word in document if word in fasttext.wv] or [np.zeros(100)], axis=0) for document in tokenized_text])
+
+# Konversi hasil ekstraksi fitur menjadi dataframe
+features_df = pd.DataFrame(X_fasttext)
+
+# Ekstraksi fitur dengan metode Doc2Vec
+from gensim.models.doc2vec import Doc2Vec, TaggedDocument
+
+# Membuat dokumen berlabel
+tagged_data = [TaggedDocument(words=word_tokenize(text), tags=[str(i)]) for i, text in enumerate(df['text_akhir'])]
+
+# Membuat model Doc2Vec
+doc2vec = Doc2Vec(vector_size=100, window=5, min_count=1, workers=4, epochs=100)
+doc2vec.build_vocab(tagged_data)
+doc2vec.train(tagged_data, total_examples=doc2vec.corpus_count, epochs=doc2vec.epochs)
+
+# Membuat vektor fitur Doc2Vec
+X_doc2vec = np.array([doc2vec.infer_vector(word_tokenize(text)) for text in df['text_akhir']])
+
+# Konversi hasil ekstraksi fitur menjadi dataframe
+features_df = pd.DataFrame(X_doc2vec)
+
 # Menampilkan hasil ekstraksi fitur
 features_df
 
 # Bagi data menjadi data latih dan data uji
-X_train, X_test, y_train, y_test = train_test_split(X_tfidf, y, test_size=0.2, random_state=42)
+# X_train, X_test, y_train, y_test = train_test_split(X_tfidf, y, test_size=0.2, random_state=42)
+# X_train, X_test, y_train, y_test = train_test_split(X_bow, y, test_size=0.2, random_state=42)
+# X_train, X_test, y_train, y_test = train_test_split(X_glove, y, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X_word2vec, y, test_size=0.2, random_state=42)
+# X_train, X_test, y_train, y_test = train_test_split(X_fasttext, y, test_size=0.2, random_state=42)
+# X_train, X_test, y_train, y_test = train_test_split(X_doc2vec, y, test_size=0.2, random_state=42)
 
-from imblearn.over_sampling import SMOTE
+# from imblearn.over_sampling import SMOTE
 
-# Seimbangkan kelas dengan SMOTE
-smote = SMOTE(random_state=42)
-X_train, y_train = smote.fit_resample(X_train, y_train)
+# # Seimbangkan kelas dengan SMOTE
+# smote = SMOTE(random_state=42)
+# X_train, y_train = smote.fit_resample(X_train, y_train)
 
 from sklearn.naive_bayes import BernoulliNB
 from sklearn.metrics import accuracy_score
@@ -328,11 +397,15 @@ from sklearn.metrics import accuracy_score
 naive_bayes = BernoulliNB()
 
 # Melatih model Naive Bayes pada data pelatihan
-naive_bayes.fit(X_train.toarray(), y_train)
+# naive_bayes.fit(X_train.toarray(), y_train)
+naive_bayes.fit(X_train, y_train)
 
 # Prediksi sentimen pada data pelatihan dan data uji
-y_pred_train_nb = naive_bayes.predict(X_train.toarray())
-y_pred_test_nb = naive_bayes.predict(X_test.toarray())
+# y_pred_train_nb = naive_bayes.predict(X_train.toarray())
+# y_pred_test_nb = naive_bayes.predict(X_test.toarray())
+
+y_pred_train_nb = naive_bayes.predict(X_train)
+y_pred_test_nb = naive_bayes.predict(X_test)
 
 # Evaluasi akurasi model Naive Bayes
 accuracy_train_nb = accuracy_score(y_pred_train_nb, y_train)
@@ -348,11 +421,16 @@ from sklearn.ensemble import RandomForestClassifier
 random_forest = RandomForestClassifier()
 
 # Melatih model Random Forest pada data pelatihan
-random_forest.fit(X_train.toarray(), y_train)
+# random_forest.fit(X_train.toarray(), y_train)
+random_forest.fit(X_train, y_train)
 
 # Prediksi sentimen pada data pelatihan dan data uji
-y_pred_train_rf = random_forest.predict(X_train.toarray())
-y_pred_test_rf = random_forest.predict(X_test.toarray())
+# y_pred_train_rf = random_forest.predict(X_train.toarray())
+# y_pred_test_rf = random_forest.predict(X_test.toarray())
+
+y_pred_train_rf = random_forest.predict(X_train)
+y_pred_test_rf = random_forest.predict(X_test)
+
 
 # Evaluasi akurasi model Random Forest
 accuracy_train_rf = accuracy_score(y_pred_train_rf, y_train)
@@ -365,14 +443,19 @@ print('Random Forest - accuracy_test:', accuracy_test_rf)
 from sklearn.linear_model import LogisticRegression
 
 # Membuat objek model Logistic Regression
-logistic_regression = LogisticRegression()
+logistic_regression = LogisticRegression(max_iter=1000)
 
 # Melatih model Logistic Regression pada data pelatihan
-logistic_regression.fit(X_train.toarray(), y_train)
+# logistic_regression.fit(X_train.toarray(), y_train)
+
+logistic_regression.fit(X_train, y_train)
 
 # Prediksi sentimen pada data pelatihan dan data uji
-y_pred_train_lr = logistic_regression.predict(X_train.toarray())
-y_pred_test_lr = logistic_regression.predict(X_test.toarray())
+# y_pred_train_lr = logistic_regression.predict(X_train.toarray())
+# y_pred_test_lr = logistic_regression.predict(X_test.toarray())
+
+y_pred_train_lr = logistic_regression.predict(X_train)
+y_pred_test_lr = logistic_regression.predict(X_test)
 
 # Evaluasi akurasi model Logistic Regression pada data pelatihan
 accuracy_train_lr = accuracy_score(y_pred_train_lr, y_train)
@@ -390,11 +473,16 @@ from sklearn.tree import DecisionTreeClassifier
 decision_tree = DecisionTreeClassifier()
 
 # Melatih model Decision Tree pada data pelatihan
-decision_tree.fit(X_train.toarray(), y_train)
+# decision_tree.fit(X_train.toarray(), y_train)
+decision_tree.fit(X_train, y_train)
+
 
 # Prediksi sentimen pada data pelatihan dan data uji
-y_pred_train_dt = decision_tree.predict(X_train.toarray())
-y_pred_test_dt = decision_tree.predict(X_test.toarray())
+# y_pred_train_dt = decision_tree.predict(X_train.toarray())
+# y_pred_test_dt = decision_tree.predict(X_test.toarray())
+
+y_pred_train_dt = decision_tree.predict(X_train)
+y_pred_test_dt = decision_tree.predict(X_test)
 
 # Evaluasi akurasi model Decision Tree
 accuracy_train_dt = accuracy_score(y_pred_train_dt, y_train)
@@ -413,8 +501,12 @@ from tensorflow.keras.layers import Embedding, LSTM, Dense, Bidirectional
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.utils import to_categorical
+from sklearn.preprocessing import LabelEncoder
 
-y = to_categorical(y, num_classes=3)
+label_encoder = LabelEncoder()
+y_integers = label_encoder.fit_transform(y)
+
+y_lstm = to_categorical(y_integers, num_classes=3)
 
 
 # Tokenisasi teks
@@ -429,12 +521,12 @@ maxlen = df['text_akhir'].apply(lambda x: len(x.split())).mean()
 padded = pad_sequences(sequences, padding='post', maxlen=int(maxlen))
 
 # Bagi data menjadi data latih dan data uji
-X_train, X_test, y_train, y_test = train_test_split(padded, y, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(padded, y_lstm, test_size=0.2, random_state=42)
 
 # Membuat model LSTM
 model = Sequential()
-model.add(Embedding(200, 64, input_length=X_train.shape[1]))
-model.add(Bidirectional(LSTM(64)))
+model.add(Embedding(1000, 128, input_length=X_train.shape[1]))
+model.add(Bidirectional(LSTM(128)))
 model.add(Dense(64, activation='relu'))
 model.add(Dense(3, activation='softmax'))
 
@@ -448,3 +540,24 @@ history = model.fit(X_train, y_train, epochs=10, validation_data=(X_test, y_test
 loss, accuracy = model.evaluate(X_test, y_test)
 print('Accuracy:', accuracy)
 
+# save model dan inference
+model.save('model_sentimen.h5')
+
+# load model
+model = tf.keras.models.load_model('model_sentimen.h5')
+
+# Inference
+def predict_sentiment(text):
+    # Tokenisasi teks
+    sequence = tokenizer.texts_to_sequences([text])
+    padded = pad_sequences(sequence, padding='post', maxlen=int(maxlen))
+
+    # Prediksi sentimen
+    prediction = model.predict(padded)
+
+    # Mengembalikan label sentimen
+    return label_encoder.inverse_transform([np.argmax(prediction)])
+
+# Contoh prediksi sentimen
+text = 'aplikasi ini sangat bagus sekali kawan no tipu no rot'
+print(predict_sentiment(text))
